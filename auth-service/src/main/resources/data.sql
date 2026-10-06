@@ -1,4 +1,4 @@
-﻿-- BCrypt de 'admin123': $2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymGe07xd00DMxs.AQubh4a
+-- BCrypt de 'admin123': $2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymGe07xd00DMxs.AQubh4a
 -- BCrypt de 'repartidor123': $2a$10$QO2mR5eD8N.e3yV2c6k4lONW4wK9fI5c/o3Yl90yC0K9X.h5xZc2i
 -- BCrypt de 'cliente123': $2a$10$2l9qJzN8F6tK1yD4w2h3luu2h4j5k6l7m8n9o0p1q2r3s4t5u6v7w
 
