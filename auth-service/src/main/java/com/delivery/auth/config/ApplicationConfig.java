@@ -1,4 +1,4 @@
-﻿package com.delivery.auth.config;
+package com.delivery.auth.config;
 
 import com.delivery.auth.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;

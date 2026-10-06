@@ -19,43 +19,29 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (!usuarioRepository.existsByEmail("admin@delivery.com")) {
-            Usuario admin = Usuario.builder()
-                    .nombre("Admin Sistema")
-                    .direccion("Ciudad de Guatemala")
-                    .telefono("55551111")
-                    .email("admin@delivery.com")
-                    .password(passwordEncoder.encode("admin123"))
-                    .rol(Rol.ADMIN)
-                    .build();
-            usuarioRepository.save(admin);
-            log.info("Usuario ADMIN inicial creado: admin@delivery.com");
-        }
+        crearOActualizarUsuario("Admin Sistema", "admin@delivery.com", "Ciudad de Guatemala", "55551111", "admin123", Rol.ADMIN);
+        crearOActualizarUsuario("Repartidor Express", "repartidor@delivery.com", "Mixco, Guatemala", "55552222", "admin123", Rol.REPARTIDOR);
+        crearOActualizarUsuario("Cliente Frecuente", "cliente@delivery.com", "Zona 10, Guatemala", "55553333", "admin123", Rol.CLIENTE);
+    }
 
-        if (!usuarioRepository.existsByEmail("repartidor@delivery.com")) {
-            Usuario repartidor = Usuario.builder()
-                    .nombre("Repartidor Express")
-                    .direccion("Mixco, Guatemala")
-                    .telefono("55552222")
-                    .email("repartidor@delivery.com")
-                    .password(passwordEncoder.encode("admin123"))
-                    .rol(Rol.REPARTIDOR)
+    private void crearOActualizarUsuario(String nombre, String email, String direccion, String telefono, String rawPassword, Rol rol) {
+        Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
+        if (usuario == null) {
+            usuario = Usuario.builder()
+                    .nombre(nombre)
+                    .direccion(direccion)
+                    .telefono(telefono)
+                    .email(email)
+                    .password(passwordEncoder.encode(rawPassword))
+                    .rol(rol)
                     .build();
-            usuarioRepository.save(repartidor);
-            log.info("Usuario REPARTIDOR inicial creado: repartidor@delivery.com");
-        }
-
-        if (!usuarioRepository.existsByEmail("cliente@delivery.com")) {
-            Usuario cliente = Usuario.builder()
-                    .nombre("Cliente Frecuente")
-                    .direccion("Zona 10, Guatemala")
-                    .telefono("55553333")
-                    .email("cliente@delivery.com")
-                    .password(passwordEncoder.encode("admin123"))
-                    .rol(Rol.CLIENTE)
-                    .build();
-            usuarioRepository.save(cliente);
-            log.info("Usuario CLIENTE inicial creado: cliente@delivery.com");
+            usuarioRepository.save(usuario);
+            log.info("Usuario creado: {} con rol {}", email, rol);
+        } else {
+            usuario.setPassword(passwordEncoder.encode(rawPassword));
+            usuario.setRol(rol);
+            usuarioRepository.save(usuario);
+            log.info("Usuario actualizado con clave cifrada: {}", email);
         }
     }
 }
