@@ -20,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtTokenFilter jwtTokenFilter;
+    private final com.delivery.comercio.security.InternalSecretFilter internalSecretFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -28,14 +29,15 @@ public class SecurityConfig {
                 .cors(AbstractHttpConfigurer::disable)
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints internos de comunicación entre microservicios
-                        .requestMatchers("/internal/**", "/api/v1/comercios/internal/**").permitAll()
+                        // Endpoints internos solo accesibles con credencial interna verificada
+                        .requestMatchers("/internal/**", "/api/v1/comercios/internal/**").hasRole("INTERNAL_SERVICE")
                         // POST /api/v1/comercios y POST /api/v1/comercios/{id}/productos solo para ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/v1/comercios/**").hasRole("ADMIN")
-                        // GET /api/v1/comercios y GET /api/v1/comercios/{id}/productos público para consulta de catálogo
-                        .requestMatchers(HttpMethod.GET, "/api/v1/comercios/**").permitAll()
+                        // GET /api/v1/comercios y GET /api/v1/comercios/{id}/productos REQUIERE AUTENTICACION segun rubrica
+                        .requestMatchers(HttpMethod.GET, "/api/v1/comercios/**").authenticated()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(internalSecretFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

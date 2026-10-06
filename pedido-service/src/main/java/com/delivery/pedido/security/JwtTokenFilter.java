@@ -30,12 +30,15 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             if (jwtTokenProvider.validateToken(token)) {
-                Authentication auth = jwtTokenProvider.getAuthentication(token);
-                SecurityContextHolder.getContext().setAuthentication(auth);
-                // Guardar el token en atributos para extraer el userId fácilmente en los controladores
-                request.setAttribute("jwt_token", token);
-                request.setAttribute("current_user_id", jwtTokenProvider.extractUserId(token));
-                request.setAttribute("current_role", jwtTokenProvider.extractRole(token));
+                Long userId = jwtTokenProvider.extractUserId(token);
+                // Si el token no contiene userId válido, rechazar la autenticación
+                if (userId != null) {
+                    Authentication auth = jwtTokenProvider.getAuthentication(token);
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    request.setAttribute("jwt_token", token);
+                    request.setAttribute("current_user_id", userId);
+                    request.setAttribute("current_role", jwtTokenProvider.extractRole(token));
+                }
             }
         }
 

@@ -167,6 +167,43 @@ else
     FAILED_TESTS=$((FAILED_TESTS + 1))
     echo -e "  [${C_RED}FAIL${C_RESET}] 1.8 Acceso no autorizado permiti? entrar con status ${STATUS_UNAUTH}"
 fi
+
+# 1.9 Consulta de comercios sin token debe ser rechazada (401 o 403)
+RESP_CAT_UNAUTH=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/comercios")
+STATUS_CAT_UNAUTH=$(echo "$RESP_CAT_UNAUTH" | tail -n 1)
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [ "$STATUS_CAT_UNAUTH" == "401" ] || [ "$STATUS_CAT_UNAUTH" == "403" ]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo -e "  [${C_GREEN}PASS${C_RESET}] 1.9 Consulta de comercios sin token rechazada (Status: ${STATUS_CAT_UNAUTH})"
+else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo -e "  [${C_RED}FAIL${C_RESET}] 1.9 Consulta de comercios sin token permitida con status ${STATUS_CAT_UNAUTH}"
+fi
+
+# 1.10 Acceso directo a endpoints internos sin credencial interna (debe dar 403)
+RESP_INT_UNAUTH=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/comercios/internal/productos/1/deduct-stock?cantidad=1")
+STATUS_INT_UNAUTH=$(echo "$RESP_INT_UNAUTH" | tail -n 1)
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [ "$STATUS_INT_UNAUTH" == "403" ]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo -e "  [${C_GREEN}PASS${C_RESET}] 1.10 Endpoint interno sin credencial X-Internal-Secret rechazado (Status: ${STATUS_INT_UNAUTH})"
+else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo -e "  [${C_RED}FAIL${C_RESET}] 1.10 Endpoint interno sin credencial permitio acceso (Status: ${STATUS_INT_UNAUTH})"
+fi
+
+# 1.11 Acceso a endpoint interno con credencial incorrecta (debe dar 403)
+RESP_INT_BAD=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/comercios/internal/productos/1/deduct-stock?cantidad=1" \
+  -H "X-Internal-Secret: clave_falsa")
+STATUS_INT_BAD=$(echo "$RESP_INT_BAD" | tail -n 1)
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [ "$STATUS_INT_BAD" == "403" ]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo -e "  [${C_GREEN}PASS${C_RESET}] 1.11 Endpoint interno con clave incorrecta rechazado (Status: ${STATUS_INT_BAD})"
+else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo -e "  [${C_RED}FAIL${C_RESET}] 1.11 Endpoint interno con clave falsa no retorno 403 (Status: ${STATUS_INT_BAD})"
+fi
 echo ""
 
 # ------------------------------------------------------------------------------
@@ -174,15 +211,17 @@ echo ""
 # ------------------------------------------------------------------------------
 echo -e "${C_BLUE}${C_BOLD}[2] M?DULO 2: GESTI?N DE COMERCIOS Y PRODUCTOS (20%)${C_RESET}"
 
-# 2.1 Listar comercios p?blicos
-RESP_LIST_COM=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/comercios")
+# 2.1 Listar comercios autenticado como CLIENTE
+RESP_LIST_COM=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/comercios" \
+  -H "Authorization: Bearer ${TOKEN_CLI}")
 STATUS_LIST_COM=$(echo "$RESP_LIST_COM" | tail -n 1)
-assert_result "2.1 Listar comercios p?blicos" "200" "$STATUS_LIST_COM" ""
+assert_result "2.1 Listar comercios autenticado como CLIENTE" "200" "$STATUS_LIST_COM" ""
 
-# 2.2 Filtrar comercios por categor?a RESTAURANTE
-RESP_FILT_COM=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/comercios?categoria=RESTAURANTE")
+# 2.2 Filtrar comercios por categor?a RESTAURANTE autenticado
+RESP_FILT_COM=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/comercios?categoria=RESTAURANTE" \
+  -H "Authorization: Bearer ${TOKEN_CLI}")
 STATUS_FILT_COM=$(echo "$RESP_FILT_COM" | tail -n 1)
-assert_result "2.2 Filtrar comercios por categor?a" "200" "$STATUS_FILT_COM" ""
+assert_result "2.2 Filtrar comercios por categor?a autenticado" "200" "$STATUS_FILT_COM" ""
 
 # 2.3 RBAC: CLIENTE intentando crear comercio (debe dar 403)
 RESP_CLI_COM=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/comercios" \
@@ -222,10 +261,11 @@ PRODUCTO_ID=$(extract_json id "$BODY_NEW_PROD")
 PRODUCTO_ID="${PRODUCTO_ID:-1}"
 assert_result "2.6 ADMIN agrega producto con stock inicial (20 unidades)" "201" "$STATUS_NEW_PROD" "$BODY_NEW_PROD"
 
-# 2.7 Listar productos del comercio
-RESP_PRODS=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/comercios/${COMERCIO_ID}/productos")
+# 2.7 Listar productos del comercio autenticado
+RESP_PRODS=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/comercios/${COMERCIO_ID}/productos" \
+  -H "Authorization: Bearer ${TOKEN_CLI}")
 STATUS_PRODS=$(echo "$RESP_PRODS" | tail -n 1)
-assert_result "2.7 Listar productos del comercio" "200" "$STATUS_PRODS" ""
+assert_result "2.7 Listar productos del comercio autenticado" "200" "$STATUS_PRODS" ""
 echo ""
 
 # ------------------------------------------------------------------------------
@@ -268,7 +308,8 @@ else
 fi
 
 # 3.3 Verificar decremento de stock at?mico (20 - 2 = 18 restantes)
-RESP_CHK_PROD=$(curl -s -X GET "${BASE_URL}/api/v1/comercios/productos/${PRODUCTO_ID}")
+RESP_CHK_PROD=$(curl -s -X GET "${BASE_URL}/api/v1/comercios/productos/${PRODUCTO_ID}" \
+  -H "Authorization: Bearer ${TOKEN_CLI}")
 STOCK_ACTUAL=$(extract_json stock "$RESP_CHK_PROD")
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 if [ "$STOCK_ACTUAL" == "18" ]; then
@@ -306,7 +347,8 @@ STATUS_OVER_PED=$(echo "$RESP_OVER_PED" | tail -n 1)
 assert_result "4.1 Pedido con stock insuficiente rechazado con 400 Bad Request" "400" "$STATUS_OVER_PED" ""
 
 # 4.2 Verificar que el stock se mantiene intacto tras el rollback compensatorio
-RESP_CHK_PROD2=$(curl -s -X GET "${BASE_URL}/api/v1/comercios/productos/${PRODUCTO_ID}")
+RESP_CHK_PROD2=$(curl -s -X GET "${BASE_URL}/api/v1/comercios/productos/${PRODUCTO_ID}" \
+  -H "Authorization: Bearer ${TOKEN_CLI}")
 STOCK_POST_ROLLBACK=$(extract_json stock "$RESP_CHK_PROD2")
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 if [ "$STOCK_POST_ROLLBACK" == "18" ]; then
@@ -388,7 +430,8 @@ STATUS_DO_CANCEL=$(echo "$RESP_DO_CANCEL" | tail -n 1)
 assert_result "6.2 Cancelar pedido en estado PENDIENTE" "200" "$STATUS_DO_CANCEL" "$BODY_DO_CANCEL"
 
 # 6.3 Verificar reposici?n de stock (las 3 unidades deben haber regresado: 15 + 3 = 18)
-RESP_RESTORED=$(curl -s -X GET "${BASE_URL}/api/v1/comercios/productos/${PRODUCTO_ID}")
+RESP_RESTORED=$(curl -s -X GET "${BASE_URL}/api/v1/comercios/productos/${PRODUCTO_ID}" \
+  -H "Authorization: Bearer ${TOKEN_CLI}")
 STOCK_RESTORED=$(extract_json stock "$RESP_RESTORED")
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 if [ "$STOCK_RESTORED" == "18" ]; then
@@ -453,7 +496,8 @@ done
 rm -rf "$CONC_OUT_DIR"
 
 # Verificar que exactamente 5 tuvieron ?xito y las dem?s 7 fueron rechazadas por stock agotado
-RESP_FINAL_CONC=$(curl -s -X GET "${BASE_URL}/api/v1/comercios/productos/${PROD_CONC_ID}")
+RESP_FINAL_CONC=$(curl -s -X GET "${BASE_URL}/api/v1/comercios/productos/${PROD_CONC_ID}" \
+  -H "Authorization: Bearer ${TOKEN_CLI}")
 STOCK_FINAL_CONC=$(extract_json stock "$RESP_FINAL_CONC")
 
 TOTAL_TESTS=$((TOTAL_TESTS + 1))

@@ -103,6 +103,12 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>3.1.2</version>
+					<configuration>
+						<systemPropertyVariables>
+							<JWT_SECRET>404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970</JWT_SECRET>
+							<INTERNAL_API_SECRET>test_internal_secret_key_32_chars_long_12345</INTERNAL_API_SECRET>
+						</systemPropertyVariables>
+					</configuration>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>

@@ -101,4 +101,63 @@ class AuthServiceIntegrationTest {
             authService.login(loginRequest);
         });
     }
+
+    @Autowired
+    private com.delivery.auth.security.JwtService jwtService;
+
+    @Test
+    @DisplayName("Debe rechazar token JWT expirado")
+    void testTokenExpiradoRechazado() {
+        // Generar un token con expiración en el pasado (-10 segundos)
+        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode("404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970");
+        javax.crypto.SecretKey key = io.jsonwebtoken.security.Keys.hmacShaKeyFor(keyBytes);
+
+        String expiredToken = io.jsonwebtoken.Jwts.builder()
+                .subject("admin@delivery.com")
+                .issuedAt(new java.util.Date(System.currentTimeMillis() - 60000))
+                .expiration(new java.util.Date(System.currentTimeMillis() - 10000))
+                .signWith(key)
+                .compact();
+
+        assertThrows(io.jsonwebtoken.ExpiredJwtException.class, () -> {
+            jwtService.extractUsername(expiredToken);
+        }, "Un token expirado debe ser rechazado arrojando ExpiredJwtException");
+    }
+
+    @Test
+    @DisplayName("Debe rechazar token JWT con firma alterada o inválida")
+    void testTokenFirmaInvalidaRechazado() {
+        // Generar un token firmado con una clave diferente
+        byte[] fakeKeyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode("1111111111111111111111111111111111111111111111111111111111111111");
+        javax.crypto.SecretKey fakeKey = io.jsonwebtoken.security.Keys.hmacShaKeyFor(fakeKeyBytes);
+
+        String fakeToken = io.jsonwebtoken.Jwts.builder()
+                .subject("admin@delivery.com")
+                .issuedAt(new java.util.Date())
+                .expiration(new java.util.Date(System.currentTimeMillis() + 60000))
+                .signWith(fakeKey)
+                .compact();
+
+        assertThrows(io.jsonwebtoken.security.SignatureException.class, () -> {
+            jwtService.extractUsername(fakeToken);
+        }, "Un token firmado con clave desconocida debe arrojar SignatureException");
+    }
+
+    @Test
+    @DisplayName("Debe rechazar token alterado o corrupto")
+    void testTokenCorruptoRechazado() {
+        AuthRequest loginRequest = AuthRequest.builder()
+                .email("admin@delivery.com")
+                .password("admin123")
+                .build();
+        AuthResponse response = authService.login(loginRequest);
+        String validToken = response.getToken();
+
+        // Alterar caracteres en el payload del token
+        String tamperedToken = validToken.substring(0, validToken.length() - 5) + "XXXXX";
+
+        assertThrows(io.jsonwebtoken.JwtException.class, () -> {
+            jwtService.extractUsername(tamperedToken);
+        }, "Un token alterado debe arrojar una excepción JwtException");
+    }
 }
