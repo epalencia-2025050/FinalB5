@@ -1,0 +1,22 @@
+target/
+**/target/
+*.class
+
+# Logs
+*.log
+
+# Entornos y temporales
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Archivos de crash y temporales
+*.dump
+*.dumpstream
