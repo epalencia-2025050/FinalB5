@@ -67,32 +67,38 @@ public class PedidoServiceImpl implements IPedidoService {
 
                 detalles.add(detalle);
             }
+            // Total del pedido = Subtotal de productos + Costo fijo de envío (Q20.00)
+            BigDecimal totalCalculado = subtotalAcumulado.add(COSTO_ENVIO_FIJO);
+
+            Pedido pedido = Pedido.builder()
+                    .clienteId(clienteId)
+                    .fechaPedido(LocalDateTime.now())
+                    .costoEnvio(COSTO_ENVIO_FIJO)
+                    .montoTotal(totalCalculado)
+                    .estado(EstadoPedido.PENDIENTE)
+                    .build();
+
+            for (DetallePedido d : detalles) {
+                pedido.addDetalle(d);
+            }
+
+            Pedido guardado = pedidoRepository.save(pedido);
+            log.info("Pedido creado con ID: {} y Total: Q{}", guardado.getId(), guardado.getMontoTotal());
+            return mapToResponse(guardado);
         } catch (Exception ex) {
+            log.warn("Fallo durante la creación del pedido. Iniciando compensación de stock. Causa: {}", ex.getMessage());
             // Rollback compensatorio para devolver el stock descontado en los ítems previos de esta orden
             for (ItemPedidoRequest revertir : procesadosParaRollback) {
-                comercioClient.restaurarStock(revertir.getProductoId(), revertir.getCantidad());
+                try {
+                    comercioClient.restaurarStock(revertir.getProductoId(), revertir.getCantidad());
+                    log.info("Stock compensado exitosamente para producto ID: {}, cantidad: {}", revertir.getProductoId(), revertir.getCantidad());
+                } catch (Exception compEx) {
+                    log.error("ALERTA CRÍTICA: Falló la compensación remota de stock para producto ID: {}, cantidad: {}. Requiere reconciliación manual. Causa: {}",
+                            revertir.getProductoId(), revertir.getCantidad(), compEx.getMessage(), compEx);
+                }
             }
             throw ex;
         }
-
-        // Total del pedido = Subtotal de productos + Costo fijo de envío (Q20.00)
-        BigDecimal totalCalculado = subtotalAcumulado.add(COSTO_ENVIO_FIJO);
-
-        Pedido pedido = Pedido.builder()
-                .clienteId(clienteId)
-                .fechaPedido(LocalDateTime.now())
-                .costoEnvio(COSTO_ENVIO_FIJO)
-                .montoTotal(totalCalculado)
-                .estado(EstadoPedido.PENDIENTE)
-                .build();
-
-        for (DetallePedido d : detalles) {
-            pedido.addDetalle(d);
-        }
-
-        Pedido guardado = pedidoRepository.save(pedido);
-        log.info("Pedido creado con ID: {} y Total: Q{}", guardado.getId(), guardado.getMontoTotal());
-        return mapToResponse(guardado);
     }
 
     @Override
@@ -171,7 +177,12 @@ public class PedidoServiceImpl implements IPedidoService {
 
         // Restaurar el stock de cada producto involucrado
         for (DetallePedido detalle : pedido.getDetalles()) {
-            comercioClient.restaurarStock(detalle.getProductoId(), detalle.getCantidad());
+            try {
+                comercioClient.restaurarStock(detalle.getProductoId(), detalle.getCantidad());
+            } catch (Exception compEx) {
+                log.error("ALERTA CRÍTICA: Falló la restauración de stock para producto ID: {} en cancelación de pedido {}. Requiere reconciliación manual. Causa: {}",
+                        detalle.getProductoId(), pedidoId, compEx.getMessage(), compEx);
+            }
         }
 
         Pedido cancelado = pedidoRepository.save(pedido);

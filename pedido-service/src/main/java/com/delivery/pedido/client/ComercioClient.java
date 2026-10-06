@@ -14,9 +14,13 @@ public class ComercioClient {
 
     private final RestClient restClient;
 
-    public ComercioClient(@Value("${services.comercio.url:http://localhost:8082}") String comercioUrl) {
+    public ComercioClient(
+            @Value("${services.comercio.url:http://localhost:8082}") String comercioUrl,
+            @Value("${internal.api.secret:${INTERNAL_API_SECRET:delivery-internal-secret-token-key-2026}}") String internalSecret
+    ) {
         this.restClient = RestClient.builder()
                 .baseUrl(comercioUrl)
+                .defaultHeader("X-Internal-Secret", internalSecret)
                 .build();
     }
 

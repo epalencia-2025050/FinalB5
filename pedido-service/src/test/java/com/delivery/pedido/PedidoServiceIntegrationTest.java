@@ -153,4 +153,61 @@ class PedidoServiceIntegrationTest {
         // Verificar que se compensó restaurando el stock del producto 1
         Mockito.verify(comercioClient).restaurarStock(1L, 2);
     }
+
+    @Test
+    @DisplayName("Debe asegurar que en pedido multi-producto no queda stock descontado parcialmente")
+    void testRollbackCompensatorioMultipleProductos() {
+        ProductoInfo prod1 = ProductoInfo.builder().id(10L).nombre("P10").precio(new BigDecimal("10.00")).stock(5).disponible(true).build();
+        ProductoInfo prod2 = ProductoInfo.builder().id(20L).nombre("P20").precio(new BigDecimal("15.00")).stock(5).disponible(true).build();
+        ProductoInfo prod3 = ProductoInfo.builder().id(30L).nombre("P30").precio(new BigDecimal("20.00")).stock(0).disponible(true).build();
+
+        Mockito.when(comercioClient.obtenerProducto(10L)).thenReturn(prod1);
+        Mockito.when(comercioClient.obtenerProducto(20L)).thenReturn(prod2);
+        Mockito.when(comercioClient.obtenerProducto(30L)).thenReturn(prod3);
+
+        Mockito.when(comercioClient.descontarStock(eq(10L), eq(2))).thenReturn(prod1);
+        Mockito.when(comercioClient.descontarStock(eq(20L), eq(3))).thenReturn(prod2);
+        Mockito.when(comercioClient.descontarStock(eq(30L), eq(1))).thenThrow(new RuntimeException("Stock insuficiente en producto 30"));
+
+        PedidoRequest request = PedidoRequest.builder()
+                .items(List.of(
+                        ItemPedidoRequest.builder().productoId(10L).cantidad(2).build(),
+                        ItemPedidoRequest.builder().productoId(20L).cantidad(3).build(),
+                        ItemPedidoRequest.builder().productoId(30L).cantidad(1).build()
+                ))
+                .build();
+
+        assertThrows(RuntimeException.class, () -> pedidoService.crearPedido(100L, request));
+
+        // Verificar que todos los productos previamente descontados fueron restaurados íntegramente
+        Mockito.verify(comercioClient, Mockito.times(1)).restaurarStock(10L, 2);
+        Mockito.verify(comercioClient, Mockito.times(1)).restaurarStock(20L, 3);
+        // El producto 30 no se debe intentar restaurar porque nunca llegó a descontarse
+        Mockito.verify(comercioClient, Mockito.never()).restaurarStock(eq(30L), anyInt());
+    }
+
+    @Test
+    @DisplayName("Debe ejecutar rollback compensatorio si falla pedidoRepository.save() sin doble compensación")
+    void testRollbackCompensatorioFalloEnSave() {
+        com.delivery.pedido.repository.PedidoRepository mockRepo = Mockito.mock(com.delivery.pedido.repository.PedidoRepository.class);
+        ComercioClient mockClient = Mockito.mock(ComercioClient.class);
+        com.delivery.pedido.service.impl.PedidoServiceImpl service = new com.delivery.pedido.service.impl.PedidoServiceImpl(mockRepo, mockClient);
+
+        ProductoInfo prod = ProductoInfo.builder().id(50L).nombre("Pizza").precio(new BigDecimal("50.00")).stock(10).disponible(true).build();
+        Mockito.when(mockClient.obtenerProducto(50L)).thenReturn(prod);
+        Mockito.when(mockClient.descontarStock(50L, 2)).thenReturn(prod);
+        Mockito.when(mockRepo.save(any())).thenThrow(new org.springframework.dao.DataIntegrityViolationException("Fallo de base de datos simulado en save"));
+
+        PedidoRequest request = PedidoRequest.builder()
+                .items(List.of(ItemPedidoRequest.builder().productoId(50L).cantidad(2).build()))
+                .build();
+
+        // Debe preservar y propagar la excepción original sin silenciarla
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> {
+            service.crearPedido(99L, request);
+        });
+
+        // Debe compensar exactamente una vez (sin doble restauración)
+        Mockito.verify(mockClient, Mockito.times(1)).restaurarStock(50L, 2);
+    }
 }

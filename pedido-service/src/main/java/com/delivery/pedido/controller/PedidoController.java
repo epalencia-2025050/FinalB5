@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,9 +30,8 @@ public class PedidoController {
             HttpServletRequest servletRequest
     ) {
         Long clienteId = (Long) servletRequest.getAttribute("current_user_id");
-        // Si no vino userId en el JWT, tomar 1L de fallback
         if (clienteId == null) {
-            clienteId = 1L;
+            throw new AccessDeniedException("Token de autenticación no contiene un identificador de usuario válido");
         }
         PedidoResponse response = pedidoService.crearPedido(clienteId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -43,7 +43,7 @@ public class PedidoController {
     public ResponseEntity<List<PedidoResponse>> listarMisPedidos(HttpServletRequest servletRequest) {
         Long clienteId = (Long) servletRequest.getAttribute("current_user_id");
         if (clienteId == null) {
-            clienteId = 1L;
+            throw new AccessDeniedException("Token de autenticación no contiene un identificador de usuario válido");
         }
         List<PedidoResponse> pedidos = pedidoService.listarMisPedidos(clienteId);
         return ResponseEntity.ok(pedidos);
@@ -66,6 +66,9 @@ public class PedidoController {
             HttpServletRequest servletRequest
     ) {
         Long usuarioId = (Long) servletRequest.getAttribute("current_user_id");
+        if (usuarioId == null) {
+            throw new AccessDeniedException("Token de autenticación no contiene un identificador de usuario válido");
+        }
         String rol = (String) servletRequest.getAttribute("current_role");
         PedidoResponse response = pedidoService.actualizarEstado(id, request, usuarioId, rol);
         return ResponseEntity.ok(response);
@@ -79,6 +82,9 @@ public class PedidoController {
             HttpServletRequest servletRequest
     ) {
         Long usuarioId = (Long) servletRequest.getAttribute("current_user_id");
+        if (usuarioId == null) {
+            throw new AccessDeniedException("Token de autenticación no contiene un identificador de usuario válido");
+        }
         String rol = (String) servletRequest.getAttribute("current_role");
         PedidoResponse response = pedidoService.cancelarPedido(id, usuarioId, rol);
         return ResponseEntity.ok(response);
