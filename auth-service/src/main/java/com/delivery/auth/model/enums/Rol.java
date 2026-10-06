@@ -1,4 +1,4 @@
-﻿package com.delivery.auth.model.enums;
+package com.delivery.auth.model.enums;
 
 public enum Rol {
     ADMIN,

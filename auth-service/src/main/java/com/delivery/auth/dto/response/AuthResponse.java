@@ -1,4 +1,4 @@
-﻿package com.delivery.auth.dto.response;
+package com.delivery.auth.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

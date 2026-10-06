@@ -1,4 +1,4 @@
-﻿package com.delivery.auth.repository;
+package com.delivery.auth.repository;
 
 import com.delivery.auth.model.entity.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;

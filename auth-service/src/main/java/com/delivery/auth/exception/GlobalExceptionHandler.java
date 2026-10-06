@@ -1,4 +1,4 @@
-﻿package com.delivery.auth.exception;
+package com.delivery.auth.exception;
 
 import com.delivery.auth.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;

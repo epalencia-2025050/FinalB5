@@ -1,4 +1,4 @@
-﻿package com.delivery.auth.model.entity;
+package com.delivery.auth.model.entity;
 
 import com.delivery.auth.model.enums.Rol;
 import jakarta.persistence.*;
