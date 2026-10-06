@@ -129,4 +129,28 @@ class PedidoServiceIntegrationTest {
             pedidoService.cancelarPedido(otro.getId(), 100L, "CLIENTE");
         });
     }
+
+    @Test
+    @DisplayName("Debe ejecutar rollback compensatorio restaurando stock si falla un ítem posterior")
+    void testRollbackCompensatorioStockInsuficiente() {
+        ProductoInfo prod1 = ProductoInfo.builder().id(1L).nombre("P1").precio(new BigDecimal("10.00")).stock(5).disponible(true).build();
+        ProductoInfo prod2 = ProductoInfo.builder().id(2L).nombre("P2").precio(new BigDecimal("20.00")).stock(0).disponible(true).build();
+
+        Mockito.when(comercioClient.obtenerProducto(1L)).thenReturn(prod1);
+        Mockito.when(comercioClient.obtenerProducto(2L)).thenReturn(prod2);
+        Mockito.when(comercioClient.descontarStock(eq(1L), anyInt())).thenReturn(prod1);
+        Mockito.when(comercioClient.descontarStock(eq(2L), anyInt())).thenThrow(new RuntimeException("Stock insuficiente"));
+
+        PedidoRequest request = PedidoRequest.builder()
+                .items(List.of(
+                        ItemPedidoRequest.builder().productoId(1L).cantidad(2).build(),
+                        ItemPedidoRequest.builder().productoId(2L).cantidad(1).build()
+                ))
+                .build();
+
+        assertThrows(RuntimeException.class, () -> pedidoService.crearPedido(100L, request));
+
+        // Verificar que se compensó restaurando el stock del producto 1
+        Mockito.verify(comercioClient).restaurarStock(1L, 2);
+    }
 }

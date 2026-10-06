@@ -72,4 +72,51 @@ class ComercioServiceIntegrationTest {
             productoService.descontarStock(prodResp.getId(), 50);
         });
     }
+
+    @Test
+    @DisplayName("Debe manejar concurrencia estricta al descontar stock con hilos simultáneos")
+    void testDescuentoStockConcurrente() throws InterruptedException {
+        // Crear producto con stock 10
+        ComercioResponse comResp = comercioService.listarComercios(null).get(0);
+        ProductoRequest prodReq = ProductoRequest.builder()
+                .nombre("Producto Concurrencia " + System.currentTimeMillis())
+                .precio(new BigDecimal("25.00"))
+                .stock(10)
+                .disponible(true)
+                .build();
+        ProductoResponse prod = productoService.agregarProducto(comResp.getId(), prodReq);
+        final Long prodId = prod.getId();
+
+        int numHilos = 10;
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(numHilos);
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch doneLatch = new java.util.concurrent.CountDownLatch(numHilos);
+        java.util.concurrent.atomic.AtomicInteger exitosos = new java.util.concurrent.atomic.AtomicInteger(0);
+
+        for (int i = 0; i < numHilos; i++) {
+            executor.submit(() -> {
+                try {
+                    latch.await();
+                    productoService.descontarStock(prodId, 1);
+                    exitosos.incrementAndGet();
+                } catch (Exception ignored) {
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        latch.countDown(); // Liberar todos los hilos simultáneamente
+        doneLatch.await(10, java.util.concurrent.TimeUnit.SECONDS);
+        executor.shutdown();
+
+        assertEquals(10, exitosos.get(), "Los 10 hilos deben haber descontado 1 unidad exitosamente");
+        ProductoResponse finalProd = productoService.obtenerProducto(prodId);
+        assertEquals(0, finalProd.getStock(), "El stock final debe ser exactamente 0 tras las 10 deducciones");
+
+        // Un intento adicional debe fallar por stock insuficiente
+        assertThrows(InsufficientStockException.class, () -> {
+            productoService.descontarStock(prodId, 1);
+        });
+    }
 }

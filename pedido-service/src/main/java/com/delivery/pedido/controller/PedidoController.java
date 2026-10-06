@@ -61,7 +61,7 @@ public class PedidoController {
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasAnyRole('REPARTIDOR', 'ADMIN')")
     public ResponseEntity<PedidoResponse> actualizarEstado(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UpdateEstadoRequest request,
             HttpServletRequest servletRequest
     ) {
@@ -71,11 +71,11 @@ public class PedidoController {
         return ResponseEntity.ok(response);
     }
 
-    // PATCH /api/v1/pedidos/{id}/cancelar - CLIENTE, ADMIN
-    @PatchMapping("/{id}/cancelar")
+    // PATCH /api/v1/pedidos/{id}/cancelar o DELETE /api/v1/pedidos/{id} - CLIENTE, ADMIN
+    @RequestMapping(value = {"/{id}/cancelar", "/{id}"}, method = {RequestMethod.PATCH, RequestMethod.DELETE})
     @PreAuthorize("hasAnyRole('CLIENTE', 'ADMIN')")
     public ResponseEntity<PedidoResponse> cancelarPedido(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             HttpServletRequest servletRequest
     ) {
         Long usuarioId = (Long) servletRequest.getAttribute("current_user_id");

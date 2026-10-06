@@ -14,22 +14,22 @@ public class InternalProductoController {
     private final IProductoService productoService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductoResponse> obtenerProducto(@PathVariable Long id) {
+    public ResponseEntity<ProductoResponse> obtenerProducto(@PathVariable("id") Long id) {
         return ResponseEntity.ok(productoService.obtenerProducto(id));
     }
 
     @PostMapping("/{id}/deduct-stock")
     public ResponseEntity<ProductoResponse> descontarStock(
-            @PathVariable Long id,
-            @RequestParam int cantidad
+            @PathVariable("id") Long id,
+            @RequestParam("cantidad") int cantidad
     ) {
         return ResponseEntity.ok(productoService.descontarStock(id, cantidad));
     }
 
     @PostMapping("/{id}/restore-stock")
     public ResponseEntity<ProductoResponse> restaurarStock(
-            @PathVariable Long id,
-            @RequestParam int cantidad
+            @PathVariable("id") Long id,
+            @RequestParam("cantidad") int cantidad
     ) {
         return ResponseEntity.ok(productoService.restaurarStock(id, cantidad));
     }

@@ -21,12 +21,12 @@ public class RegisterRequest {
     private String telefono;
 
     @NotBlank(message = "El email es obligatorio")
-    @Email(message = "El formato de email no es vÃ¡lido")
+    @Email(message = "El formato de email no es válido")
     private String email;
 
-    @NotBlank(message = "La contraseÃ±a es obligatoria")
+    @NotBlank(message = "La contraseña es obligatoria")
     private String password;
 
-    private Rol rol; // Opcional, si no viene se asigna CLIENTE
+    private Rol rol; // Se ignora en registro público; siempre se asigna CLIENTE por seguridad
 }
 
