@@ -35,7 +35,8 @@ public class AuthServiceImpl implements IAuthService {
             throw new EmailAlreadyExistsException("El correo ya se encuentra registrado: " + request.getEmail());
         }
 
-        Rol userRol = request.getRol() != null ? request.getRol() : Rol.CLIENTE;
+        // Seguridad: El registro público SIEMPRE asigna Rol.CLIENTE para prevenir escalamiento de privilegios
+        Rol userRol = Rol.CLIENTE;
 
         Usuario usuario = Usuario.builder()
                 .nombre(request.getNombre())

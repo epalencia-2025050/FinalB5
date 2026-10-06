@@ -34,10 +34,11 @@ public class SecurityConfig {
 
                         // GET /api/v1/pedidos/disponibles y PATCH estado para REPARTIDOR y ADMIN
                         .requestMatchers(HttpMethod.GET, "/api/v1/pedidos/disponibles").hasAnyRole("REPARTIDOR", "ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/pedidos/{id}/estado").hasAnyRole("REPARTIDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/pedidos/*/estado").hasAnyRole("REPARTIDOR", "ADMIN")
 
-                        // PATCH /api/v1/pedidos/{id}/cancelar para CLIENTE y ADMIN
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/pedidos/{id}/cancelar").hasAnyRole("CLIENTE", "ADMIN")
+                        // Cancelación (PATCH /cancelar o DELETE /{id}) para CLIENTE y ADMIN
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/pedidos/*/cancelar").hasAnyRole("CLIENTE", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/pedidos/*").hasAnyRole("CLIENTE", "ADMIN")
 
                         .anyRequest().authenticated()
                 )

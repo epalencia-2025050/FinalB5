@@ -29,11 +29,11 @@ public class SecurityConfig {
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints internos de comunicación entre microservicios
-                        .requestMatchers("/internal/**").permitAll()
+                        .requestMatchers("/internal/**", "/api/v1/comercios/internal/**").permitAll()
                         // POST /api/v1/comercios y POST /api/v1/comercios/{id}/productos solo para ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/v1/comercios/**").hasRole("ADMIN")
-                        // GET /api/v1/comercios y GET /api/v1/comercios/{id}/productos para usuarios autenticados
-                        .requestMatchers(HttpMethod.GET, "/api/v1/comercios/**").authenticated()
+                        // GET /api/v1/comercios y GET /api/v1/comercios/{id}/productos público para consulta de catálogo
+                        .requestMatchers(HttpMethod.GET, "/api/v1/comercios/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);

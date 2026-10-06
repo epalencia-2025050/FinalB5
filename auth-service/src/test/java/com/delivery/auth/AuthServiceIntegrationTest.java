@@ -53,4 +53,52 @@ class AuthServiceIntegrationTest {
         assertEquals(Rol.CLIENTE.name(), response.getRol());
         assertEquals(randomEmail, response.getEmail());
     }
+
+    @Test
+    @DisplayName("Debe prevenir escalamiento de privilegios: solicitud con ADMIN debe registrar CLIENTE")
+    void testRegisterPreventsPrivilegeEscalation() {
+        String randomEmail = "intento_admin_" + System.currentTimeMillis() + "@delivery.com";
+        RegisterRequest registerRequest = RegisterRequest.builder()
+                .nombre("Hacker Wannabe")
+                .direccion("Desconocida")
+                .telefono("11112222")
+                .email(randomEmail)
+                .password("hackerpass")
+                .rol(Rol.ADMIN) // Intento de escalar privilegios
+                .build();
+
+        AuthResponse response = authService.register(registerRequest);
+
+        assertNotNull(response);
+        assertEquals(Rol.CLIENTE.name(), response.getRol(), "El rol asignado debe ser forzosamente CLIENTE");
+    }
+
+    @Test
+    @DisplayName("Debe fallar al registrar con correo duplicado")
+    void testRegisterDuplicateEmail() {
+        RegisterRequest registerRequest = RegisterRequest.builder()
+                .nombre("Admin Duplicado")
+                .direccion("Ciudad")
+                .telefono("12345678")
+                .email("admin@delivery.com") // Ya existe por DataInitializer
+                .password("otraClave")
+                .build();
+
+        assertThrows(com.delivery.auth.exception.EmailAlreadyExistsException.class, () -> {
+            authService.register(registerRequest);
+        });
+    }
+
+    @Test
+    @DisplayName("Debe fallar al iniciar sesión con contraseña incorrecta")
+    void testLoginBadCredentials() {
+        AuthRequest loginRequest = AuthRequest.builder()
+                .email("admin@delivery.com")
+                .password("password_incorrecto")
+                .build();
+
+        assertThrows(org.springframework.security.authentication.BadCredentialsException.class, () -> {
+            authService.login(loginRequest);
+        });
+    }
 }

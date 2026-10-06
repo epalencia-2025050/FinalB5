@@ -24,10 +24,10 @@ public class ComercioController {
     private final IComercioService comercioService;
     private final IProductoService productoService;
 
-    // GET /api/v1/comercios - Autenticado. Lista comercios activos con filtro opcional por categoría
+    // GET /api/v1/comercios - Autenticado o público. Lista comercios activos con filtro opcional por categoría
     @GetMapping
     public ResponseEntity<List<ComercioResponse>> listarComercios(
-            @RequestParam(required = false) CategoriaComercio categoria
+            @RequestParam(name = "categoria", required = false) CategoriaComercio categoria
     ) {
         List<ComercioResponse> comercios = comercioService.listarComercios(categoria);
         return ResponseEntity.ok(comercios);
@@ -41,9 +41,9 @@ public class ComercioController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // GET /api/v1/comercios/{id}/productos - Autenticado. Obtiene el menú/catálogo de productos de un comercio
+    // GET /api/v1/comercios/{id}/productos - Obtiene el menú/catálogo de productos de un comercio
     @GetMapping("/{id}/productos")
-    public ResponseEntity<List<ProductoResponse>> listarProductosPorComercio(@PathVariable Long id) {
+    public ResponseEntity<List<ProductoResponse>> listarProductosPorComercio(@PathVariable("id") Long id) {
         List<ProductoResponse> productos = productoService.listarProductosPorComercio(id);
         return ResponseEntity.ok(productos);
     }
@@ -52,10 +52,16 @@ public class ComercioController {
     @PostMapping("/{id}/productos")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductoResponse> agregarProducto(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody ProductoRequest request
     ) {
         ProductoResponse response = productoService.agregarProducto(id, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // GET /api/v1/comercios/productos/{id} - Obtener detalle y stock actual de un producto
+    @GetMapping("/productos/{id}")
+    public ResponseEntity<ProductoResponse> obtenerProductoPorId(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(productoService.obtenerProducto(id));
     }
 }
