@@ -20,6 +20,8 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         crearOActualizarUsuario("Admin Sistema", "admin@delivery.com", "Ciudad de Guatemala", "55551111", "admin123", Rol.ADMIN);
+        crearOActualizarUsuario("Admin FastOrder", "admin@fastorder.com", "Ciudad de Guatemala", "55551111", "Admin123*", Rol.ADMIN);
+        crearOActualizarUsuario("Cliente FastOrder", "cliente@fastorder.com", "Ciudad de Guatemala", "55554321", "Cliente123*", Rol.CLIENTE);
         crearOActualizarUsuario("Repartidor Express", "repartidor@delivery.com", "Mixco, Guatemala", "55552222", "admin123", Rol.REPARTIDOR);
         crearOActualizarUsuario("Cliente Frecuente", "cliente@delivery.com", "Zona 10, Guatemala", "55553333", "admin123", Rol.CLIENTE);
     }
